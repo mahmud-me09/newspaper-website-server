@@ -1,0 +1,1 @@
+server: https://newspaper-website-server.vercel.app/
