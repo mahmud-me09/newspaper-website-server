@@ -1,1 +1,1 @@
-server: https://newspaper-website-server.vercel.app/
+server: https://newspaper-website-server.vercel.app
