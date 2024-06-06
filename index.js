@@ -38,12 +38,17 @@ async function run() {
 
 		// users section
 
-		app.get('/users', async(req,res)=>{
-			const users = await usersCollection
-				.find({})
-				.toArray();
-			res.send(users);
-		})
+		app.get("/users", async (req, res) => {
+			let query = {};
+			if (req.query.email) {
+				query = { email: req.query.email };
+				const user = await usersCollection.findOne(query);
+				res.send(user);
+			} else {
+				const users = await usersCollection.find(query).toArray();
+				res.send(users);
+			}
+		});
 
 		app.patch("/users/:id", async (req, res) => {
 			const id = req.params.id;
@@ -51,7 +56,7 @@ async function run() {
 			const updatedUserData = { $set: req.body };
 			const result = await usersCollection.updateOne(
 				query,
-				updatedUserData,
+				updatedUserData
 			);
 			res.send(result);
 		});
@@ -61,7 +66,10 @@ async function run() {
 			const query = { email: user.email };
 			const existingUser = usersCollection.findOne(query);
 			if (existingUser) {
-				return res.send({message: "User Already Exists", insertedId:null});
+				return res.send({
+					message: "User Already Exists",
+					insertedId: null,
+				});
 			} else {
 				const result = await usersCollection.insertOne(user);
 				res.send(result);
@@ -84,9 +92,9 @@ async function run() {
 
 		// Articles section
 		app.get("/articles", async (req, res) => {
-			let query ={}
-			if(req.query.email){
-				query = {"author.email":req.query.email};
+			let query = {};
+			if (req.query.email) {
+				query = { "author.email": req.query.email };
 			}
 			const projection = {};
 			const articles = await articlesCollection
@@ -118,23 +126,23 @@ async function run() {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const updatedArticleData = { $set: req.body };
-			const option = {upsert:true}
+			const option = { upsert: true };
 			const result = await articlesCollection.updateOne(
 				query,
 				updatedArticleData,
 				option
 			);
-			
+
 			res.send(result);
 		});
 		app.patch("/articledetail/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const updatedArticleData = req.body;
-			
+
 			const result = await articlesCollection.updateOne(
 				query,
-				updatedArticleData,
+				updatedArticleData
 			);
 
 			res.send(result);
@@ -143,10 +151,8 @@ async function run() {
 		app.delete("/articles/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
-			
-			const result = await articlesCollection.deleteOne(
-				query,
-			);
+
+			const result = await articlesCollection.deleteOne(query);
 			res.send(result);
 		});
 	} finally {
