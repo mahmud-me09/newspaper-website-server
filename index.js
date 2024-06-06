@@ -84,12 +84,29 @@ async function run() {
 
 		// Articles section
 		app.get("/articles", async (req, res) => {
-			const query = {};
+			let query ={}
+			if(req.query.email){
+				query = {"author.email":req.query.email};
+			}
 			const projection = {};
 			const articles = await articlesCollection
 				.find(query, projection)
 				.toArray();
 			res.send(articles);
+		});
+		app.get("/articledetail/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			try {
+				const article = await articlesCollection.findOne(query);
+				if (!article) {
+					return res.status(404).send("Article not found");
+				}
+				res.send(article);
+			} catch (err) {
+				console.error("Error fetching article:", err);
+				res.status(500).send("Error fetching article");
+			}
 		});
 
 		app.post("/articles", async (req, res) => {
@@ -108,6 +125,18 @@ async function run() {
 				option
 			);
 			
+			res.send(result);
+		});
+		app.patch("/articledetail/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const updatedArticleData = req.body;
+			
+			const result = await articlesCollection.updateOne(
+				query,
+				updatedArticleData,
+			);
+
 			res.send(result);
 		});
 
