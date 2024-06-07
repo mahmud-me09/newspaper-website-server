@@ -64,7 +64,7 @@ async function run() {
 		app.post("/users", async (req, res) => {
 			const user = req.body;
 			const query = { email: user.email };
-			const existingUser = usersCollection.findOne(query);
+			const existingUser = await usersCollection.findOne(query);
 			if (existingUser) {
 				return res.send({
 					message: "User Already Exists",
@@ -79,7 +79,7 @@ async function run() {
 		// Publisher Section
 		app.get("/publisher", async (req, res) => {
 			const publisher = await publisherCollection
-				.find({}, { projection: { _id: 0, publisherLogo: 0 } })
+				.find({})
 				.toArray();
 			res.send(publisher);
 		});
@@ -93,15 +93,50 @@ async function run() {
 		// Articles section
 		app.get("/articles", async (req, res) => {
 			let query = {};
+			const { sortBy, limit } = req.query;
+
 			if (req.query.email) {
-				query = { "author.email": req.query.email };
+				query["author.email"] = req.query.email;
 			}
-			const projection = {};
-			const articles = await articlesCollection
-				.find(query, projection)
-				.toArray();
-			res.send(articles);
+			if (req.query.isApproved) {
+				query.isApproved = req.query.isApproved === "true";
+			}
+			if (req.query.isPremium) {
+				query.isPremium = req.query.isPremium === "true";
+			}
+			if (req.query.title) {
+				query.name = { $regex: req.query.title, $options: "i" }; // Case insensitive search
+			}
+			if (req.query.publisher) {
+				query.publisher = {
+					$regex: req.query.publisher,
+					$options: "i",
+				}; // Case insensitive search
+			}
+			if (req.query.tags) {
+				query.tags = { $in: req.query.tags.split(",") };
+			}
+
+
+			const options = {};
+
+			if (sortBy) {
+				options.sort = { viewCount: -1 };
+			}
+			if (limit) {
+				options.limit = parseInt(limit);
+			}
+			try {
+				const articles = await articlesCollection
+					.find(query, options)
+					.toArray();
+				res.send(articles);
+			} catch (error) {
+				console.error("Error fetching articles:", error);
+				res.status(500).send("Error fetching articles");
+			}
 		});
+
 		app.get("/articledetail/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
@@ -155,6 +190,48 @@ async function run() {
 			const result = await articlesCollection.deleteOne(query);
 			res.send(result);
 		});
+
+		// stats
+
+		app.get("/statistics", async (req, res) => {
+			try {
+				const totalUsers = await usersCollection.countDocuments();
+				const premiumUsers = await usersCollection.countDocuments({
+					isPremium: true,
+				});
+				const normalUsers = totalUsers - premiumUsers;
+
+				res.send({ totalUsers, premiumUsers, normalUsers });
+			} catch (error) {
+				console.error("Error fetching statistics:", error);
+				res.status(500).send("Error fetching statistics");
+			}
+		});
+
+		app.get("/publisher/articles/count", async (req, res) => {
+			try {
+				const pipeline = [
+					{
+						$group: {
+							_id: "$publisher",
+							count: { $sum: 1 },
+						},
+					},
+				];
+
+				const results = await articlesCollection
+					.aggregate(pipeline)
+					.toArray();
+				res.send(results);
+			} catch (error) {
+				console.error(
+					"Error aggregating article counts by publisher:",
+					error
+				);
+				res.status(500).send("Error aggregating article counts");
+			}
+		});
+
 	} finally {
 	}
 }
