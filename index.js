@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const app = express();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 app.use(express.json());
@@ -21,6 +22,7 @@ const client = new MongoClient(uri, {
 		deprecationErrors: true,
 	},
 });
+
 
 const publisherCollection = client.db("newspaperDB").collection("publisher");
 const articlesCollection = client.db("newspaperDB").collection("articles");
@@ -231,6 +233,35 @@ async function run() {
 				res.status(500).send("Error aggregating article counts");
 			}
 		});
+
+		// Payment Section
+
+		app.post("/create-payment-intent", async (req, res) => {
+			const { price } = req.body;
+			const amount = parseInt(price * 100);
+			console.log(amount, "amount inside the intent");
+
+			const paymentIntent = await stripe.paymentIntents.create({
+				amount: amount,
+				currency: "usd",
+				payment_method_types: ["card"],
+			});
+
+			res.send({
+				clientSecret: paymentIntent.client_secret,
+			});
+		});
+		app.put("/payment", async(req,res)=>{
+			const subscriptionHistory = req.body;
+			const query = {email:req.query.email}
+			
+			const updatedUserData = { $set: subscriptionHistory };
+			const result = await usersCollection.updateOne(
+				query,
+				updatedUserData
+			);
+			res.send(result);
+		})
 
 	} finally {
 	}
