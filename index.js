@@ -38,7 +38,7 @@ async function run() {
 		// 	"Pinged your deployment. You successfully connected to MongoDB!"
 		// );
 
-		// users section
+		// users section update
 
 		app.get("/users", async (req, res) => {
 			let query = {};
