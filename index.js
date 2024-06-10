@@ -62,6 +62,18 @@ async function run() {
 			);
 			res.send(result);
 		});
+		app.patch("/userpublication/:email",async(req,res)=>{
+			const email = req.params.email
+			const query = {email}
+			const updatedUserData = req.body;
+
+			const result = await usersCollection.updateOne(
+				query,
+				updatedUserData
+			);
+
+			res.send(result);
+		})
 
 		app.post("/users", async (req, res) => {
 			const user = req.body;
@@ -234,10 +246,38 @@ async function run() {
 			}
 		});
 
+		app.get("/publisher/viewcount", async (req, res) => {
+			try {
+				const pipeline = [
+					{
+						$group: {
+							_id: "$publisher",
+							totalViewCount: { $sum: "$viewCount" },
+						},
+					},
+					{
+						$sort: { totalViewCount: -1 },
+					},
+				];
+
+				const results = await articlesCollection
+					.aggregate(pipeline)
+					.toArray();
+				res.send(results);
+			} catch (error) {
+				console.error(
+					"Error aggregating view counts by publisher:",
+					error
+				);
+				res.status(500).send("Error aggregating view counts");
+			}
+		});
+
 		// Payment Section
 
 		app.post("/create-payment-intent", async (req, res) => {
-			const { price } = req.body;
+			try{
+				const { price } = req.body;
 			const amount = parseInt(price * 100);
 			console.log(amount, "amount inside the intent");
 
@@ -250,6 +290,9 @@ async function run() {
 			res.send({
 				clientSecret: paymentIntent.client_secret,
 			});
+			}catch(error){
+				res.send(error.message)
+			}
 		});
 		app.put("/payment", async(req,res)=>{
 			const subscriptionHistory = req.body;
